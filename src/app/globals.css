@@ -1,26 +1,62 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf9f7;
+  --foreground: #1a1a1a;
+  --surface: #ffffff;
+  --surface-elevated: #ffffff;
+  --border: #e8e4df;
+  --muted: #6b6560;
+  --crimson: #c41e3a;
+  --crimson-dark: #9e1830;
+  --ring: #c41e3a;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-crimson: var(--crimson);
+  --color-crimson-dark: var(--crimson-dark);
+  --color-ring: var(--ring);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #0f0e0d;
+    --foreground: #f5f3f0;
+    --surface: #1a1918;
+    --surface-elevated: #242220;
+    --border: #2e2c29;
+    --muted: #9a9590;
+    --crimson: #e84d63;
+    --crimson-dark: #c41e3a;
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+.hero-pattern {
+  background-image: radial-gradient(circle at 20% 50%, rgba(196, 30, 58, 0.06) 0%, transparent 50%),
+    radial-gradient(circle at 80% 20%, rgba(196, 30, 58, 0.04) 0%, transparent 40%);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@media (max-width: 767px) {
+  .chat-messages-area {
+    min-height: 50vh !important;
+    max-height: none !important;
+  }
 }
