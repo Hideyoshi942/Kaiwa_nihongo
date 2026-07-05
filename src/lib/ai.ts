@@ -211,38 +211,42 @@ function mockReply(scenarioId: string, turn: number): { reply: string; translati
 }
 
 export async function generateChatResponse(req: ChatRequest): Promise<ChatResponse> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = process.env.GEMINI_API_KEY;
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
   const feedbackLang = LOCALE_NAMES[req.locale];
 
   if (apiKey) {
     try {
-      const { default: OpenAI } = await import("openai");
-      const openai = new OpenAI({ apiKey });
-
       const adaptiveLevel = req.adaptiveLevel ?? "N4";
       const adaptiveNote = getAdaptiveInstructions(adaptiveLevel);
       const difficultyNote = adjustScenarioDifficulty(req.scenario.difficulty, adaptiveLevel);
 
-      const systemPrompt = `You are a Japanese conversation practice partner playing the role of: ${req.scenario.aiRole}.
-Scenario: ${req.scenario.title} - ${req.scenario.description}
+      const systemPrompt = `You are a Japanese conversation partner in a language-practice app. Play this role convincingly and STAY IN CHARACTER the entire time: ${req.scenario.aiRole}.
+
+Scene: ${req.scenario.title} — ${req.scenario.description}
 ${difficultyNote}
 Learner adaptive level: ${adaptiveLevel}
 Adaptive instructions: ${adaptiveNote}
-User interface language: ${feedbackLang}
+Feedback language: ${feedbackLang}
 
-Rules:
-1. Respond ONLY in natural Japanese calibrated to the learner's adaptive level (${adaptiveLevel}).
-2. If the user's responses are weak (score < 60), simplify your Japanese and be more supportive.
-3. If the user's responses are strong (score > 80), gradually increase complexity.
-4. Keep responses concise (1-3 sentences).
-5. Stay in character and advance the conversation naturally.
-6. After responding, evaluate the user's latest message.
-7. Write all feedback comments in ${feedbackLang}.
-${req.voiceMode ? `8. The user spoke via voice input — include a "voice" object with pronunciation, fluency, and speed scores (0-100) plus a comment in ${feedbackLang}.` : ""}
+Act like a REAL person in this exact situation, not a textbook:
+- React naturally to what the learner just said — show emotion, pick up on details they mention, and move the scene forward like a real conversation would.
+- Use the register the scene calls for: casual (タメ口) with friends/classmates, and 丁寧語・敬語 with staff, customers, teachers, and seniors. Sound like a native, not a machine.
+- Keep your Japanese natural but calibrated to the learner's level (${adaptiveLevel}). Keep replies short: 1–3 sentences.
+- Ask a natural follow-up or keep the situation going so the learner always has something to respond to.
+- If the learner writes in another language or gets stuck, gently steer them back to Japanese with a short hint.
+- Never break character, never mention that you are an AI, never explain these rules.
 
-Return JSON with this exact structure:
+Coaching (do this SILENTLY, only inside the "feedback" object — never inside "reply"):
+1. If the learner's responses are weak (score < 60), simplify your Japanese and be more supportive.
+2. If they are strong (score > 80), gradually increase the challenge.
+3. Evaluate the learner's latest message and write ALL feedback comments in ${feedbackLang}.
+4. In "correction"/"alternative", give a more natural Japanese version when their sentence has mistakes or sounds unnatural; omit them when it is already good.
+${req.voiceMode ? `5. The user spoke via voice input — include a "voice" object with pronunciation, fluency, and speed scores (0-100) plus a comment in ${feedbackLang}.` : ""}
+
+Return ONLY valid JSON with this exact structure (no markdown, no extra text):
 {
-  "reply": "your Japanese response",
+  "reply": "your in-character Japanese response",
   "translations": {
     "en": "English translation of your Japanese response",
     "vi": "Vietnamese translation of your Japanese response"
@@ -258,29 +262,46 @@ Return JSON with this exact structure:
   }
 }`;
 
-      const messages = [
-        { role: "system" as const, content: systemPrompt },
-        ...req.history.map((m) => ({
-          role: m.role as "user" | "assistant",
-          content: m.content,
+      const contents = [
+        ...req.history.map((msg) => ({
+          role: msg.role === "assistant" ? "model" : "user",
+          parts: [{ text: msg.content }],
         })),
-        { role: "user" as const, content: req.userMessage },
+        { role: "user", parts: [{ text: req.userMessage }] },
       ];
 
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini",
-        messages,
-        response_format: { type: "json_object" },
-        temperature: 0.7,
-      });
+      const res = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
+          body: JSON.stringify({
+            system_instruction: { parts: [{ text: systemPrompt }] },
+            contents,
+            generationConfig: {
+              temperature: 0.8,
+              responseMimeType: "application/json",
+            },
+          }),
+        }
+      );
 
-      const content = completion.choices[0]?.message?.content;
-      if (content) {
-        const parsed = JSON.parse(content) as ChatResponse;
-        return parsed;
+      if (res.ok) {
+        const data = await res.json();
+        const content: string | undefined =
+          data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (content) {
+          const parsed = JSON.parse(content) as ChatResponse;
+          return parsed;
+        }
+      } else {
+        console.error("Gemini HTTP error:", res.status);
       }
     } catch (e) {
-      console.error("OpenAI error, falling back to mock:", e);
+      console.error("Gemini error, falling back to mock:", e);
     }
   }
 

@@ -333,6 +333,102 @@ const SCENARIO_LOCALES: Record<string, Record<Locale, ScenarioLocaleContent>> = 
     en: { title: "Business Dinner", description: "Navigate formal toasts and conversation at a business dinner.", aiRole: "Executive client", openingTranslation: "Thank you for your time today. Let's start with a toast." },
     vi: { title: "Bữa ăn kinh doanh", description: "Giao tiếp và cụng ly trong bữa ăn kinh doanh trang trọng.", aiRole: "Khách hàng điều hành", openingTranslation: "Cảm ơn thời gian hôm nay. Chúng ta cụng ly trước nhé." },
   },
+  "business-apology": {
+    en: { title: "Apologizing to a Client", description: "Apologize to a client for a mistake and explain how you'll fix it.", aiRole: "Dissatisfied client", openingTranslation: "About the recent delivery — the quantity was wrong. What happened here?" },
+    vi: { title: "Xin lỗi khách hàng", description: "Xin lỗi khách hàng vì một sai sót và trình bày cách khắc phục.", aiRole: "Khách hàng không hài lòng", openingTranslation: "Về đợt giao hàng vừa rồi — số lượng bị sai. Chuyện gì đã xảy ra vậy?" },
+  },
+  "deadline-negotiation": {
+    en: { title: "Deadline Negotiation", description: "Negotiate a realistic deadline and conditions with a client.", aiRole: "Client project manager", openingTranslation: "With this scope, we'd like delivery by the end of next week. Is that possible?" },
+    vi: { title: "Đàm phán thời hạn", description: "Thương lượng thời hạn và điều kiện hợp lý với khách hàng.", aiRole: "Quản lý dự án phía khách hàng", openingTranslation: "Với phạm vi này, chúng tôi muốn giao vào cuối tuần sau. Có khả thi không?" },
+  },
+  "sales-pitch": {
+    en: { title: "Sales Pitch", description: "Pitch a product or service and handle a prospect's questions.", aiRole: "Prospective customer", openingTranslation: "I'm interested in your service. What are its strengths compared to competitors?" },
+    vi: { title: "Chào bán sản phẩm", description: "Giới thiệu sản phẩm/dịch vụ và trả lời câu hỏi của khách tiềm năng.", aiRole: "Khách hàng tiềm năng", openingTranslation: "Tôi quan tâm đến dịch vụ của bạn. So với đối thủ thì có điểm mạnh gì?" },
+  },
+  "progress-report": {
+    en: { title: "Reporting Progress to Your Boss", description: "Report project progress, blockers, and next steps to your manager.", aiRole: "Manager", openingTranslation: "How's that project going? Please report on the progress." },
+    vi: { title: "Báo cáo tiến độ với sếp", description: "Báo cáo tiến độ, vướng mắc và bước tiếp theo của dự án với quản lý.", aiRole: "Quản lý", openingTranslation: "Dự án đó tiến triển thế nào rồi? Hãy báo cáo tiến độ nhé." },
+  },
+  "meeting-opinion": {
+    en: { title: "Stating Your Opinion in a Meeting", description: "Express agreement, disagreement, and suggestions politely in a meeting.", aiRole: "Meeting facilitator", openingTranslation: "I'd like to hear everyone's opinion on this proposal. What do you think?" },
+    vi: { title: "Nêu ý kiến trong cuộc họp", description: "Bày tỏ đồng ý, phản đối và đề xuất một cách lịch sự trong cuộc họp.", aiRole: "Người điều phối họp", openingTranslation: "Tôi muốn nghe ý kiến mọi người về đề xuất này. Bạn nghĩ sao?" },
+  },
+  "business-networking": {
+    en: { title: "Business Networking", description: "Exchange business cards and make small talk at a networking event.", aiRole: "Businessperson from another company", openingTranslation: "Nice to meet you. I'm Takahashi from XX Corp. May I have your business card?" },
+    vi: { title: "Giao lưu kết nối", description: "Trao danh thiếp và trò chuyện xã giao tại sự kiện kết nối.", aiRole: "Doanh nhân công ty khác", openingTranslation: "Rất vui được gặp. Tôi là Takahashi ở công ty XX. Cho tôi xin danh thiếp được không?" },
+  },
+  "report-trouble": {
+    en: { title: "Reporting a Problem", description: "Report an incident or system trouble to your boss and escalate calmly.", aiRole: "Manager", openingTranslation: "You look pale. Did something happen? Calmly tell me the situation." },
+    vi: { title: "Báo cáo sự cố", description: "Báo cáo sự cố hoặc lỗi hệ thống cho sếp và báo lên bình tĩnh.", aiRole: "Quản lý", openingTranslation: "Trông bạn tái nhợt. Có chuyện gì à? Bình tĩnh kể tình hình cho tôi nghe." },
+  },
+  "phone-appointment": {
+    en: { title: "Scheduling by Phone", description: "Arrange a meeting time with a client over the phone using keigo.", aiRole: "Client on the phone", openingTranslation: "Thank you for your support. Could we have a meeting sometime next week?" },
+    vi: { title: "Hẹn lịch qua điện thoại", description: "Sắp xếp thời gian họp với khách hàng qua điện thoại bằng kính ngữ.", aiRole: "Khách hàng qua điện thoại", openingTranslation: "Cảm ơn sự hỗ trợ của bạn. Tuần sau chúng ta gặp nhau được không?" },
+  },
+  "neighbor-greeting": {
+    en: { title: "Chatting with a Neighbor", description: "Make small talk with a neighbor in your apartment building.", aiRole: "Friendly neighbor", openingTranslation: "Oh, hello. Heading out? Nice weather today, isn't it?" },
+    vi: { title: "Trò chuyện với hàng xóm", description: "Trò chuyện xã giao với hàng xóm trong khu chung cư.", aiRole: "Hàng xóm thân thiện", openingTranslation: "Ồ, xin chào. Đi ra ngoài à? Hôm nay trời đẹp nhỉ?" },
+  },
+  "making-plans": {
+    en: { title: "Inviting a Friend Out", description: "Invite a friend somewhere and decide on the time and place.", aiRole: "Close friend", openingTranslation: "Hey, long time! Do you have any plans this weekend?" },
+    vi: { title: "Rủ bạn đi chơi", description: "Rủ bạn đi đâu đó và quyết định thời gian, địa điểm.", aiRole: "Bạn thân", openingTranslation: "Này, lâu rồi! Cuối tuần này bạn có kế hoạch gì không?" },
+  },
+  cafe: {
+    en: { title: "Ordering at a Café", description: "Order drinks and food at a café and customize your order.", aiRole: "Café staff", openingTranslation: "Welcome. Are you ready to order?" },
+    vi: { title: "Gọi món ở quán cà phê", description: "Gọi đồ uống, đồ ăn và tùy chỉnh order tại quán cà phê.", aiRole: "Nhân viên quán cà phê", openingTranslation: "Xin chào. Bạn gọi món chưa ạ?" },
+  },
+  taxi: {
+    en: { title: "Taking a Taxi", description: "Tell a taxi driver your destination and confirm the route and fare.", aiRole: "Taxi driver", openingTranslation: "Welcome. Where would you like to go?" },
+    vi: { title: "Đi taxi", description: "Nói điểm đến cho tài xế taxi và xác nhận lộ trình, giá cước.", aiRole: "Tài xế taxi", openingTranslation: "Xin mời. Bạn muốn đi đâu ạ?" },
+  },
+  "lost-item": {
+    en: { title: "Reporting a Lost Item", description: "Report a lost item at a police box and describe it.", aiRole: "Police officer", openingTranslation: "What's the matter? Did you lose something?" },
+    vi: { title: "Báo mất đồ", description: "Trình báo đồ bị mất tại chốt cảnh sát và mô tả món đồ.", aiRole: "Cảnh sát", openingTranslation: "Có chuyện gì vậy? Bạn làm rơi mất gì à?" },
+  },
+  "mobile-contract": {
+    en: { title: "Signing Up for a Phone Plan", description: "Sign up for a mobile phone plan and ask about fees and data.", aiRole: "Mobile shop staff", openingTranslation: "Welcome. Are you here to sign up for a new contract today?" },
+    vi: { title: "Đăng ký gói điện thoại", description: "Đăng ký gói cước điện thoại và hỏi về phí cùng dung lượng data.", aiRole: "Nhân viên cửa hàng di động", openingTranslation: "Xin chào. Hôm nay bạn đến để đăng ký hợp đồng mới ạ?" },
+  },
+  dentist: {
+    en: { title: "Dentist Visit", description: "Explain tooth pain and understand the dentist's instructions.", aiRole: "Dentist", openingTranslation: "Hello. What brings you in today? Are your teeth hurting?" },
+    vi: { title: "Khám nha khoa", description: "Mô tả cơn đau răng và hiểu hướng dẫn của nha sĩ.", aiRole: "Nha sĩ", openingTranslation: "Xin chào. Hôm nay bạn đến vì lý do gì? Bạn bị đau răng à?" },
+  },
+  "city-hall": {
+    en: { title: "City Hall Procedures", description: "Handle a resident registration or paperwork at the city hall.", aiRole: "City hall clerk", openingTranslation: "Next, please. What can I help you with today?" },
+    vi: { title: "Thủ tục ở市役所", description: "Làm thủ tục đăng ký cư trú hoặc giấy tờ tại tòa thị chính.", aiRole: "Nhân viên tòa thị chính", openingTranslation: "Mời người tiếp theo. Hôm nay tôi có thể giúp gì cho bạn?" },
+  },
+  "garbage-sorting": {
+    en: { title: "Garbage Sorting Rules", description: "Learn the local garbage sorting and collection rules from your building manager.", aiRole: "Apartment manager", openingTranslation: "Hello, I'm the building manager. Can we talk briefly about garbage sorting?" },
+    vi: { title: "Quy tắc phân loại rác", description: "Học quy tắc phân loại và lịch đổ rác từ quản lý tòa nhà.", aiRole: "Quản lý tòa nhà", openingTranslation: "Xin chào, tôi là quản lý tòa nhà. Nói chuyện một chút về phân loại rác được không?" },
+  },
+  moving: {
+    en: { title: "Moving House", description: "Get a moving estimate and arrange the details with a moving company.", aiRole: "Moving company staff", openingTranslation: "You're here for a moving estimate today, right? Could you tell me how much luggage you have?" },
+    vi: { title: "Chuyển nhà", description: "Nhận báo giá và sắp xếp chi tiết chuyển nhà với công ty vận chuyển.", aiRole: "Nhân viên công ty chuyển nhà", openingTranslation: "Hôm nay bạn đến để lấy báo giá chuyển nhà nhỉ? Cho tôi biết lượng đồ đạc được không?" },
+  },
+  "phone-reservation": {
+    en: { title: "Reservation by Phone", description: "Make a restaurant or clinic reservation over the phone.", aiRole: "Restaurant staff on the phone", openingTranslation: "Thank you for calling. This is XX Restaurant. Would you like to make a reservation?" },
+    vi: { title: "Đặt chỗ qua điện thoại", description: "Đặt bàn nhà hàng hoặc lịch phòng khám qua điện thoại.", aiRole: "Nhân viên nhà hàng qua điện thoại", openingTranslation: "Cảm ơn bạn đã gọi. Nhà hàng XX xin nghe. Bạn muốn đặt chỗ ạ?" },
+  },
+  resignation: {
+    en: { title: "Handing In Your Resignation", description: "Tell your manager you intend to resign, professionally and respectfully.", aiRole: "Manager", openingTranslation: "Good work. I heard you wanted to talk. What is it?" },
+    vi: { title: "Xin nghỉ việc", description: "Trình bày ý định nghỉ việc với sếp một cách chuyên nghiệp và lễ độ.", aiRole: "Quản lý", openingTranslation: "Vất vả rồi. Nghe nói bạn muốn nói chuyện, có việc gì vậy?" },
+  },
+  "contract-review": {
+    en: { title: "Confirming Contract Terms", description: "Review and confirm the terms of a contract with a client.", aiRole: "Client", openingTranslation: "I've reviewed the contract. I'd like to confirm a few of the terms." },
+    vi: { title: "Xác nhận điều khoản hợp đồng", description: "Rà soát và xác nhận các điều khoản hợp đồng với khách hàng.", aiRole: "Khách hàng", openingTranslation: "Tôi đã xem hợp đồng. Tôi muốn xác nhận vài điều khoản." },
+  },
+  "subordinate-feedback": {
+    en: { title: "Giving Feedback to a Subordinate", description: "Give constructive feedback to a junior team member as their senior.", aiRole: "Junior team member", openingTranslation: "Hello. Were you able to check the document from earlier?" },
+    vi: { title: "Góp ý cho cấp dưới", description: "Đưa phản hồi mang tính xây dựng cho nhân viên cấp dưới với vai trò cấp trên.", aiRole: "Nhân viên cấp dưới", openingTranslation: "Chào anh/chị. Anh/chị đã xem tài liệu lúc nãy chưa ạ?" },
+  },
+  "phone-complaint": {
+    en: { title: "Handling a Complaint Call", description: "Calm an upset customer and resolve their complaint over the phone.", aiRole: "Upset customer on the phone", openingTranslation: "Hello. The product I bought from you broke right away. What are you going to do about it?" },
+    vi: { title: "Xử lý cuộc gọi khiếu nại", description: "Trấn an khách đang bực và giải quyết khiếu nại qua điện thoại.", aiRole: "Khách hàng bực bội qua điện thoại", openingTranslation: "A lô. Sản phẩm tôi mua chỗ các anh hỏng ngay lập tức, các anh tính sao đây?" },
+  },
+  exhibition: {
+    en: { title: "Trade Show Booth", description: "Greet visitors and explain your product at a trade show booth.", aiRole: "Booth visitor", openingTranslation: "Hello. I'm a bit curious about this product — could you explain it to me?" },
+    vi: { title: "Tiếp khách ở hội chợ", description: "Chào khách và giới thiệu sản phẩm tại gian hàng hội chợ triển lãm.", aiRole: "Khách tham quan gian hàng", openingTranslation: "Xin chào. Tôi hơi tò mò về sản phẩm này — bạn giải thích giúp được không?" },
+  },
 };
 
 export function getLocalizedScenario(scenario: Scenario, locale: Locale) {

@@ -8,8 +8,20 @@ import { DrillQuiz } from "@/components/drill-quiz";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/components/locale-provider";
 
-const LEVELS: (AdaptiveLevel | "all")[] = ["all", "N5", "N4", "N3", "N2"];
-const TYPES: (DrillType | "all")[] = ["all", "grammar", "vocabulary", "politeness"];
+const LEVELS: (AdaptiveLevel | "all")[] = ["all", "N4", "N3", "N2", "N1"];
+const TYPES: (DrillType | "all")[] = [
+  "all",
+  "sonkeigo",
+  "kenjougo",
+  "bikago",
+  "double-keigo",
+  "usage",
+  "keigo-conversion",
+  "cushion",
+  "email",
+  "service",
+  "situation",
+];
 
 export default function DrillsPage() {
   const { messages: m } = useLocale();

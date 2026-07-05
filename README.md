@@ -88,9 +88,16 @@ Without `DATABASE_URL`, the app falls back to browser localStorage (guest mode).
 
 ### Optional: Enable real AI
 
+The conversation partner is powered by **Google Gemini**. Set:
+
 ```
-OPENAI_API_KEY=sk-...
+GEMINI_API_KEY=...            # from https://aistudio.google.com/apikey
+GEMINI_MODEL=gemini-2.5-flash # optional, this is the default
 ```
+
+Without a key (or on any API error), the app falls back to the built-in mock
+replies so it always runs. `OPENAI_API_KEY` is now only used (optionally) for
+Whisper speech-to-text; leave it empty to use browser speech recognition.
 
 ## Project Structure
 
