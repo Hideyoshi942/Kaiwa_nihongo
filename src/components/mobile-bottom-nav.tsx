@@ -2,7 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, LayoutDashboard, GraduationCap, BarChart3, History } from "lucide-react";
+import {
+  BookOpen,
+  LayoutDashboard,
+  GraduationCap,
+  BarChart3,
+  History,
+  ScrollText,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/components/locale-provider";
 
@@ -12,6 +19,7 @@ export function MobileBottomNav() {
 
   const tabs = [
     { href: "/scenarios", label: m.nav.scenarios, icon: BookOpen },
+    { href: "/forms", label: m.nav.forms, icon: ScrollText },
     { href: "/dashboard", label: m.nav.dashboard, icon: LayoutDashboard },
     { href: "/drills", label: m.nav.drills, icon: GraduationCap },
     { href: "/analytics", label: m.nav.analytics, icon: BarChart3 },
@@ -20,7 +28,7 @@ export function MobileBottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-surface/95 backdrop-blur-md md:hidden safe-bottom">
-      <div className="flex items-center justify-around px-1 py-1">
+      <div className="grid grid-cols-6 items-center px-1 py-1">
         {tabs.map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href);
           return (
@@ -28,7 +36,7 @@ export function MobileBottomNav() {
               key={href}
               href={href}
               className={cn(
-                "flex flex-1 flex-col items-center gap-0.5 rounded-lg py-2 text-[10px] font-medium transition-colors",
+                "flex flex-col items-center gap-0.5 rounded-lg py-2 text-[10px] font-medium transition-colors",
                 active ? "text-crimson" : "text-muted"
               )}
             >

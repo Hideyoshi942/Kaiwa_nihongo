@@ -3,6 +3,7 @@ import type { Messages } from "./en";
 export const vi: Messages = {
   nav: {
     scenarios: "Kịch bản",
+    forms: "Các thể",
     dashboard: "Bảng điều khiển",
     history: "Lịch sử",
     achievements: "Thành tựu",

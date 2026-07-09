@@ -2,7 +2,20 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { MessageCircle, LayoutDashboard, History, LogIn, LogOut, BookOpen, Trophy, GraduationCap, BarChart3, Building2, Medal } from "lucide-react";
+import {
+  MessageCircle,
+  LayoutDashboard,
+  History,
+  LogIn,
+  LogOut,
+  BookOpen,
+  Trophy,
+  GraduationCap,
+  BarChart3,
+  Building2,
+  Medal,
+  ScrollText,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/components/auth-provider";
@@ -16,6 +29,7 @@ export function Navbar() {
 
   const links = [
     { href: "/scenarios", label: m.nav.scenarios, icon: BookOpen },
+    { href: "/forms", label: m.nav.forms, icon: ScrollText },
     { href: "/business", label: m.nav.business, icon: Building2 },
     { href: "/dashboard", label: m.nav.dashboard, icon: LayoutDashboard },
     { href: "/drills", label: m.nav.drills, icon: GraduationCap },

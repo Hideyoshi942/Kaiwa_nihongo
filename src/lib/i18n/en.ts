@@ -1,6 +1,7 @@
 export const en = {
   nav: {
     scenarios: "Scenarios",
+    forms: "Forms",
     dashboard: "Dashboard",
     history: "History",
     achievements: "Achievements",
