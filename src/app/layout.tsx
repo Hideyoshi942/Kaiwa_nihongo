@@ -4,6 +4,7 @@ import { Navbar } from "@/components/navbar";
 import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { AuthProvider } from "@/components/auth-provider";
 import { LocaleProvider } from "@/components/locale-provider";
+import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,6 +27,10 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: "Kaiwa",
   },
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }],
+    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+  },
 };
 
 export const viewport = {
@@ -33,6 +38,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: "cover" as const,
+  themeColor: "#c41e3a",
 };
 
 export default function RootLayout({
@@ -51,6 +57,7 @@ export default function RootLayout({
             <Navbar />
             <main className="flex-1 pb-20 md:pb-0">{children}</main>
             <MobileBottomNav />
+            <ServiceWorkerRegister />
           </AuthProvider>
         </LocaleProvider>
       </body>

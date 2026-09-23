@@ -64,6 +64,8 @@ export interface ChatMessage {
   translations?: { en?: string; vi?: string };
   feedback?: MessageFeedback;
   isVoice?: boolean;
+  /** Client-only error notice; never sent to the AI or saved. */
+  failed?: boolean;
   createdAt: string;
 }
 
@@ -80,6 +82,8 @@ export interface Conversation {
   scenarioTitle: string;
   messages: ChatMessage[];
   overallScore?: number;
+  /** Uploaded from guest localStorage after sign-in; scores are not trusted. */
+  imported?: boolean;
   createdAt: string;
   updatedAt: string;
 }

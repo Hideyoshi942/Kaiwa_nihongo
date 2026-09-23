@@ -8,9 +8,47 @@ services:
       POSTGRES_PASSWORD: kaiwa_secret
       POSTGRES_DB: kaiwa_nihongo
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - kaiwa_pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kaiwa -d kaiwa_nihongo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Apply DB migrations: `docker compose run --rm migrate`
+  migrate:
+    build:
+      context: .
+      target: migrator
+    profiles: ["tools"]
+    environment:
+      DATABASE_URL: postgres://kaiwa:kaiwa_secret@postgres:5432/kaiwa_nihongo
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    build:
+      context: .
+      target: runner
+    container_name: kaiwa-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgres://kaiwa:kaiwa_secret@postgres:5432/kaiwa_nihongo
+      AUTH_SECRET: ${AUTH_SECRET:?set AUTH_SECRET in .env}
+      AUTH_URL: ${AUTH_URL:-http://localhost:3000}
+      AUTH_TRUST_HOST: "true"
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      APP_TIME_ZONE: ${APP_TIME_ZONE:-Asia/Ho_Chi_Minh}
+    depends_on:
+      postgres:
+        condition: service_healthy
 
 volumes:
   kaiwa_pg_data:

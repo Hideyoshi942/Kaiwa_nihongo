@@ -15,6 +15,7 @@ import {
   Building2,
   Medal,
   ScrollText,
+  Repeat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ export function Navbar() {
     { href: "/business", label: m.nav.business, icon: Building2 },
     { href: "/dashboard", label: m.nav.dashboard, icon: LayoutDashboard },
     { href: "/drills", label: m.nav.drills, icon: GraduationCap },
+    { href: "/review", label: m.nav.review, icon: Repeat },
     { href: "/analytics", label: m.nav.analytics, icon: BarChart3 },
     { href: "/leaderboard", label: m.nav.leaderboard, icon: Medal },
     { href: "/achievements", label: m.nav.achievements, icon: Trophy },
@@ -42,32 +44,40 @@ export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-surface/80 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-foreground">
+        <Link href="/" className="flex shrink-0 items-center gap-2 font-semibold text-foreground">
           <MessageCircle className="h-6 w-6 text-crimson" />
           <span>
             会話 <span className="text-muted font-normal">Kaiwa</span>
           </span>
         </Link>
 
-        <nav className="hidden items-center gap-1 md:flex">
-          {links.map(({ href, label, icon: Icon }) => (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                pathname.startsWith(href)
-                  ? "bg-crimson/10 text-crimson"
-                  : "text-muted hover:bg-surface-elevated hover:text-foreground"
-              )}
-            >
-              <Icon className="h-4 w-4" />
-              {label}
-            </Link>
-          ))}
+        {/* Too many sections to label them all: only the active one shows its
+            label, the rest are icons with tooltips. Scrolls instead of widening the page. */}
+        <nav className="mx-2 hidden min-w-0 flex-1 items-center justify-center gap-1 overflow-x-auto md:flex">
+          {links.map(({ href, label, icon: Icon }) => {
+            const active = pathname.startsWith(href);
+            return (
+              <Link
+                key={href}
+                href={href}
+                title={label}
+                aria-label={label}
+                aria-current={active ? "page" : undefined}
+                className={cn(
+                  "flex shrink-0 items-center gap-1.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-crimson/10 text-crimson"
+                    : "text-muted hover:bg-surface-elevated hover:text-foreground"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {active && <span>{label}</span>}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <LanguageSwitcher />
           {user ? (
             <>

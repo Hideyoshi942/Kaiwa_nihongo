@@ -4,8 +4,11 @@ import {
   getAchievementDef,
 } from "./achievements";
 import { getScenarioById, SCENARIOS } from "./scenarios";
+import { dateKey, nextStreak } from "./dates";
+import { cardFromFeedback, scheduleReview, type ReviewCard, type ReviewGrade } from "./srs";
 import type {
   AchievementId,
+  MessageFeedback,
   Conversation,
   DashboardStats,
   ScenarioCategory,
@@ -14,6 +17,7 @@ import type {
 
 const USER_KEY = "kaiwa_user";
 const CONVERSATIONS_KEY = "kaiwa_conversations";
+const REVIEW_KEY = "kaiwa_review_cards";
 
 function defaultUserFields(): Pick<
   UserProfile,
@@ -93,6 +97,10 @@ export function saveConversation(conversation: Conversation): void {
   }
 }
 
+export function clearConversations(): void {
+  localStorage.removeItem(CONVERSATIONS_KEY);
+}
+
 export function getConversation(id: string): Conversation | undefined {
   return getConversations().find((c) => c.id === id);
 }
@@ -102,14 +110,10 @@ export function addXp(amount: number): UserProfile | null {
   if (!user) return null;
   user.xp += amount;
   user.level = Math.min(100, Math.floor(user.xp / 100) + 1);
-  const today = new Date().toISOString().split("T")[0];
-  if (user.lastStudyDate !== today) {
-    const yesterday = new Date();
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split("T")[0];
-    user.streak = user.lastStudyDate === yesterdayStr ? user.streak + 1 : 1;
-    user.lastStudyDate = today;
-  }
+  // Browser-local calendar day, so the streak follows the learner's own midnight.
+  const today = dateKey(new Date());
+  user.streak = nextStreak(user.streak, user.lastStudyDate, today);
+  user.lastStudyDate = today;
   saveUser(user);
   return user;
 }
@@ -231,4 +235,47 @@ export function isScenarioUnlocked(
 
 export function getScenarioCount(): number {
   return SCENARIOS.length;
+}
+
+// ---- Guest review deck -------------------------------------------------------
+
+function getReviewCards(): ReviewCard[] {
+  if (typeof window === "undefined") return [];
+  try {
+    return JSON.parse(localStorage.getItem(REVIEW_KEY) ?? "[]") as ReviewCard[];
+  } catch {
+    return [];
+  }
+}
+
+function saveReviewCards(cards: ReviewCard[]): void {
+  localStorage.setItem(REVIEW_KEY, JSON.stringify(cards));
+}
+
+/** Adds a card for a scored reply (keyed by message id, so repeats are ignored). */
+export function addReviewCard(messageId: string, scenarioId: string, said: string, feedback: MessageFeedback): void {
+  const content = cardFromFeedback(said, feedback);
+  if (!content) return;
+  const cards = getReviewCards();
+  if (cards.some((c) => c.id === messageId)) return;
+  cards.push({ id: messageId, scenarioId, ...content, box: 0, dueDate: dateKey(new Date()) });
+  saveReviewCards(cards);
+}
+
+export function getDueReviewCards(limit = 20) {
+  const today = dateKey(new Date());
+  const all = getReviewCards();
+  const due = all
+    .filter((c) => c.dueDate <= today)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.box - b.box);
+  return { cards: due.slice(0, limit), dueCount: due.length, total: all.length };
+}
+
+export function gradeReviewCard(cardId: string, grade: ReviewGrade): ReviewCard | null {
+  const cards = getReviewCards();
+  const card = cards.find((c) => c.id === cardId);
+  if (!card) return null;
+  Object.assign(card, scheduleReview(card.box, grade, dateKey(new Date())));
+  saveReviewCards(cards);
+  return card;
 }

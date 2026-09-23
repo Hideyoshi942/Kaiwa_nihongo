@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Trophy, X } from "lucide-react";
 import type { AchievementId } from "@/lib/types";
 import { getAchievementDef } from "@/lib/achievements";
 import { useLocale } from "@/components/locale-provider";
-import { cn } from "@/lib/utils";
 
 export function AchievementToast({
   achievementIds,
@@ -15,20 +14,14 @@ export function AchievementToast({
   onDismiss: () => void;
 }) {
   const { messages: m } = useLocale();
-  const [visible, setVisible] = useState(false);
-
+  // Shown while the parent passes ids; auto-dismiss clears them after 5s.
   useEffect(() => {
-    if (achievementIds.length > 0) {
-      setVisible(true);
-      const timer = setTimeout(() => {
-        setVisible(false);
-        onDismiss();
-      }, 5000);
-      return () => clearTimeout(timer);
-    }
+    if (achievementIds.length === 0) return;
+    const timer = setTimeout(onDismiss, 5000);
+    return () => clearTimeout(timer);
   }, [achievementIds, onDismiss]);
 
-  if (!visible || achievementIds.length === 0) return null;
+  if (achievementIds.length === 0) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-50 max-w-sm animate-in slide-in-from-bottom-4">
@@ -54,10 +47,7 @@ export function AchievementToast({
           </div>
           <button
             type="button"
-            onClick={() => {
-              setVisible(false);
-              onDismiss();
-            }}
+            onClick={onDismiss}
             className="text-muted hover:text-foreground"
           >
             <X className="h-4 w-4" />
