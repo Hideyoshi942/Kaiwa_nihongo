@@ -2,6 +2,9 @@ import type { AdaptiveLevel } from "@/lib/adaptive-difficulty";
 import { adjustScenarioDifficulty, getAdaptiveInstructions } from "@/lib/adaptive-difficulty";
 import type { Locale } from "@/lib/i18n";
 import type { MessageFeedback, Scenario, ScoreBreakdown } from "./types";
+import { extractPartialReply, parseChatResponse, type ChatResponse } from "./ai-response";
+
+export type { ChatResponse };
 
 interface ChatRequest {
   scenario: Scenario;
@@ -10,12 +13,6 @@ interface ChatRequest {
   locale: Locale;
   voiceMode?: boolean;
   adaptiveLevel?: AdaptiveLevel;
-}
-
-interface ChatResponse {
-  reply: string;
-  translations: { en: string; vi: string };
-  feedback: MessageFeedback;
 }
 
 const LOCALE_NAMES: Record<Locale, string> = {
@@ -210,18 +207,19 @@ function mockReply(scenarioId: string, turn: number): { reply: string; translati
   return { reply, translations };
 }
 
-export async function generateChatResponse(req: ChatRequest): Promise<ChatResponse> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+export class AiUnavailableError extends Error {}
+
+export type ChatStreamEvent =
+  | { type: "delta"; text: string }
+  | { type: "done"; response: ChatResponse; mock: boolean };
+
+function buildSystemPrompt(req: ChatRequest): string {
   const feedbackLang = LOCALE_NAMES[req.locale];
+  const adaptiveLevel = req.adaptiveLevel ?? "N4";
+  const adaptiveNote = getAdaptiveInstructions(adaptiveLevel);
+  const difficultyNote = adjustScenarioDifficulty(req.scenario.difficulty, adaptiveLevel);
 
-  if (apiKey) {
-    try {
-      const adaptiveLevel = req.adaptiveLevel ?? "N4";
-      const adaptiveNote = getAdaptiveInstructions(adaptiveLevel);
-      const difficultyNote = adjustScenarioDifficulty(req.scenario.difficulty, adaptiveLevel);
-
-      const systemPrompt = `You are a Japanese conversation partner in a language-practice app. Play this role convincingly and STAY IN CHARACTER the entire time: ${req.scenario.aiRole}.
+  return `You are a Japanese conversation partner in a language-practice app. Play this role convincingly and STAY IN CHARACTER the entire time: ${req.scenario.aiRole}.
 
 Scene: ${req.scenario.title} — ${req.scenario.description}
 ${difficultyNote}
@@ -261,53 +259,105 @@ Return ONLY valid JSON with this exact structure (no markdown, no extra text):
     "breakdown": { "grammar": 0-30, "vocabulary": 0-25, "naturalness": 0-25, "politeness": 0-20 }
   }
 }`;
+}
 
-      const contents = [
-        ...req.history.map((msg) => ({
-          role: msg.role === "assistant" ? "model" : "user",
-          parts: [{ text: msg.content }],
-        })),
-        { role: "user", parts: [{ text: req.userMessage }] },
-      ];
+const GEMINI_TIMEOUT_MS = 60_000;
 
-      const res = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "content-type": "application/json",
-            "x-goog-api-key": apiKey,
-          },
-          body: JSON.stringify({
-            system_instruction: { parts: [{ text: systemPrompt }] },
-            contents,
-            generationConfig: {
-              temperature: 0.8,
-              responseMimeType: "application/json",
-            },
-          }),
-        }
-      );
+/**
+ * Streams one chat turn. Yields the reply text as it arrives, then a final
+ * `done` event with the validated response.
+ *
+ * Without GEMINI_API_KEY the app runs in demo mode and yields a canned reply
+ * (`mock: true`). When a key IS configured, failures throw AiUnavailableError
+ * instead of silently falling back to canned replies.
+ */
+export async function* streamChatResponse(req: ChatRequest): AsyncGenerator<ChatStreamEvent> {
+  const apiKey = process.env.GEMINI_API_KEY;
 
-      if (res.ok) {
-        const data = await res.json();
-        const content: string | undefined =
-          data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (content) {
-          const parsed = JSON.parse(content) as ChatResponse;
-          return parsed;
-        }
-      } else {
-        console.error("Gemini HTTP error:", res.status);
-      }
-    } catch (e) {
-      console.error("Gemini error, falling back to mock:", e);
-    }
+  if (!apiKey) {
+    const feedback = mockEvaluate(req.userMessage, req.locale, req.voiceMode);
+    const turn = req.history.filter((m) => m.role === "user").length;
+    const { reply, translations } = mockReply(req.scenario.id, turn);
+    yield { type: "delta", text: reply };
+    yield { type: "done", response: { reply, translations, feedback }, mock: true };
+    return;
   }
 
-  const feedback = mockEvaluate(req.userMessage, req.locale, req.voiceMode);
-  const turn = req.history.filter((m) => m.role === "user").length;
-  const { reply, translations } = mockReply(req.scenario.id, turn);
+  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  const base = process.env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com";
+  const contents = [
+    ...req.history.map((msg) => ({
+      role: msg.role === "assistant" ? "model" : "user",
+      parts: [{ text: msg.content }],
+    })),
+    { role: "user", parts: [{ text: req.userMessage }] },
+  ];
 
-  return { reply, translations, feedback };
+  let res: Response;
+  try {
+    res = await fetch(
+      `${base}/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": apiKey },
+        body: JSON.stringify({
+          system_instruction: { parts: [{ text: buildSystemPrompt(req) }] },
+          contents,
+          generationConfig: { temperature: 0.8, responseMimeType: "application/json" },
+        }),
+        signal: AbortSignal.timeout(GEMINI_TIMEOUT_MS),
+      }
+    );
+  } catch (e) {
+    throw new AiUnavailableError(`Gemini request failed: ${String(e)}`);
+  }
+  if (!res.ok || !res.body) {
+    throw new AiUnavailableError(`Gemini HTTP error: ${res.status}`);
+  }
+
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let sseBuffer = "";
+  let json = "";
+  let emitted = 0;
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      sseBuffer += value;
+
+      const lines = sseBuffer.split("\n");
+      sseBuffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (!payload) continue;
+        const chunk = JSON.parse(payload);
+        const parts: { text?: string; thought?: boolean }[] =
+          chunk?.candidates?.[0]?.content?.parts ?? [];
+        for (const part of parts) {
+          if (!part.thought && typeof part.text === "string") json += part.text;
+        }
+      }
+
+      const reply = extractPartialReply(json);
+      if (reply.length > emitted) {
+        yield { type: "delta", text: reply.slice(emitted) };
+        emitted = reply.length;
+      }
+    }
+  } catch (e) {
+    throw new AiUnavailableError(`Gemini stream failed: ${String(e)}`);
+  }
+
+  let parsed: ChatResponse | null = null;
+  try {
+    parsed = parseChatResponse(JSON.parse(json), !!req.voiceMode);
+  } catch {
+    parsed = null;
+  }
+  if (!parsed) {
+    throw new AiUnavailableError("Gemini returned an invalid response");
+  }
+  yield { type: "done", response: parsed, mock: false };
 }

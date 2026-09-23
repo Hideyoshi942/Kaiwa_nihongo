@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 interface SpeechRecognitionEvent {
   results: SpeechRecognitionResultList;
@@ -28,6 +28,8 @@ function getSpeechRecognition(): SpeechRecognitionConstructor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
+const noopSubscribe = () => () => {};
+
 export function useVoiceInput() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -49,7 +51,13 @@ export function useVoiceInput() {
       .catch(() => setWhisperAvailable(false));
   }, []);
 
-  const browserSupported = !!getSpeechRecognition();
+  // Read via an external store so SSR and hydration both see `false`; reading
+  // window during render made the server and client HTML differ.
+  const browserSupported = useSyncExternalStore(
+    noopSubscribe,
+    () => !!getSpeechRecognition(),
+    () => false
+  );
   const supported = browserSupported || whisperAvailable;
 
   const startBrowserRecognition = useCallback(() => {

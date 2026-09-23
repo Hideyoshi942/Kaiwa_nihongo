@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { SessionProvider, signIn, signOut, useSession } from "next-auth/react";
 import type { UserProfile } from "@/lib/types";
-import { fetchUser } from "@/lib/data-service";
+import { fetchUser, importGuestData } from "@/lib/data-service";
 import { getUser, logoutUser } from "@/lib/storage";
 
 interface AuthContextValue {
@@ -22,7 +22,9 @@ function AuthContextInner({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [ready, setReady] = useState(false);
 
-  const loadUser = useCallback(async () => {
+  const loadUser = useCallback(async (signedIn: boolean) => {
+    // Move any history saved while browsing as a guest into the account.
+    if (signedIn) await importGuestData();
     const profile = await fetchUser();
     setUser(profile);
     setReady(true);
@@ -30,15 +32,25 @@ function AuthContextInner({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (status === "loading") return;
-    loadUser();
-  }, [status, session, loadUser]);
+    let cancelled = false;
+    (async () => {
+      if (status === "authenticated") await importGuestData();
+      const profile = await fetchUser();
+      if (cancelled) return;
+      setUser(profile);
+      setReady(true);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [status, session]);
 
   const login = async (email: string, password: string) => {
     const result = await signIn("credentials", { email, password, redirect: false });
     if (result?.error) {
       return { ok: false, error: result.error };
     }
-    await loadUser();
+    await loadUser(true);
     return { ok: true };
   };
 

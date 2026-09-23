@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState, useSyncExternalStore } from "react";
 
 interface SpeechRecognitionEvent {
   results: SpeechRecognitionResultList;
@@ -28,15 +28,18 @@ function getSpeechRecognition(): SpeechRecognitionConstructor | null {
   return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
 
+const noopSubscribe = () => () => {};
+
 export function useSpeechRecognition() {
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [supported, setSupported] = useState(false);
+  // False during SSR/hydration, then the real value on the client.
+  const supported = useSyncExternalStore(
+    noopSubscribe,
+    () => !!getSpeechRecognition(),
+    () => false
+  );
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
-
-  useEffect(() => {
-    setSupported(!!getSpeechRecognition());
-  }, []);
 
   const startListening = useCallback(() => {
     const SpeechRecognition = getSpeechRecognition();

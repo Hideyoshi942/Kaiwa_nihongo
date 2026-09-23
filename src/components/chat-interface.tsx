@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Send, Languages, Loader2, Volume2 } from "lucide-react";
 import type { AchievementId, ChatMessage, Conversation } from "@/lib/types";
@@ -15,14 +15,20 @@ import { AdaptiveBadge } from "@/components/adaptive-badge";
 import { FeedbackPanel } from "@/components/feedback-panel";
 import { VoiceButton } from "@/components/voice-button";
 import { AchievementToast } from "@/components/achievement-toast";
+import { SessionSummaryDialog } from "@/components/session-summary-dialog";
+import { summarizeSession, type SessionSummary } from "@/lib/session-summary";
 import { useLocale } from "@/components/locale-provider";
+import { speakJapanese } from "@/lib/speech";
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import {
+  ChatError,
+  addGuestReviewCard,
   checkAchievements,
   fetchAdaptiveLevel,
-  grantXp,
-  persistConversation,
-  trackVoiceMessage,
+  grantGuestXp,
+  saveGuestConversation,
+  sendChatTurn,
+  trackGuestVoiceMessage,
 } from "@/lib/data-service";
 import { getAiAvatar } from "@/lib/avatars";
 import { AiAvatarBadge } from "@/components/ai-avatar";
@@ -42,13 +48,11 @@ function buildOpeningMessage(scenario: Scenario, locale: "en" | "vi"): ChatMessa
   };
 }
 
-function speakJapanese(text: string) {
-  if (typeof window === "undefined" || !window.speechSynthesis) return;
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = "ja-JP";
-  utterance.rate = 0.9;
-  window.speechSynthesis.speak(utterance);
+const ERROR_TEXT_JA = "申し訳ございません。エラーが発生しました。もう一度お試しください。";
+
+/** False for error notices, including ones saved by older versions of the app. */
+function isRealMessage(msg: ChatMessage): boolean {
+  return !msg.failed && !(msg.role === "assistant" && msg.content === ERROR_TEXT_JA);
 }
 
 export function ChatInterface({
@@ -73,6 +77,8 @@ export function ChatInterface({
     existingConversation?.messages.filter((msg) => msg.feedback).at(-1)?.feedback
   );
   const [newAchievements, setNewAchievements] = useState<AchievementId[]>([]);
+  const [demoMode, setDemoMode] = useState(false);
+  const [summary, setSummary] = useState<SessionSummary | null>(null);
   const [adaptiveLevel, setAdaptiveLevel] = useState<AdaptiveLevel>("N4");
   const pendingVoiceSend = useRef(false);
   const sendMessageRef = useRef<(text?: string, voice?: boolean) => Promise<void>>(async () => {});
@@ -114,23 +120,30 @@ export function ChatInterface({
     }
   }, [isListening, isTranscribing, transcript]);
 
-  const persist = async (msgs: ChatMessage[], overallScore?: number) => {
-    const conv: Conversation = {
-      id: conversationId,
-      scenarioId: scenario.id,
-      scenarioTitle: localized.title,
-      messages: msgs,
-      overallScore,
-      createdAt: existingConversation?.createdAt ?? new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    await persistConversation(conv);
-  };
+  const existingCreatedAt = existingConversation?.createdAt;
+  const persistGuest = useCallback(
+    (msgs: ChatMessage[], overallScore?: number) => {
+      const conv: Conversation = {
+        id: conversationId,
+        scenarioId: scenario.id,
+        scenarioTitle: localized.title,
+        messages: msgs,
+        overallScore,
+        createdAt: existingCreatedAt ?? new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      saveGuestConversation(conv);
+    },
+    [conversationId, scenario.id, localized.title, existingCreatedAt]
+  );
 
   const sendMessage = useCallback(
     async (textOverride?: string, voiceMode = false) => {
       const text = (textOverride ?? input).trim();
       if (!text || loading) return;
+
+      // Error notices are UI-only: keep them out of the AI history and saved data.
+      const conversationSoFar = messages.filter(isRealMessage);
 
       const userMsg: ChatMessage = {
         id: crypto.randomUUID(),
@@ -139,73 +152,105 @@ export function ChatInterface({
         isVoice: voiceMode,
         createdAt: new Date().toISOString(),
       };
+      const streamingId = crypto.randomUUID();
+      const streamingMsg: ChatMessage = {
+        id: streamingId,
+        role: "assistant",
+        content: "",
+        createdAt: new Date().toISOString(),
+      };
 
-      setMessages((prev) => [...prev, userMsg]);
+      setMessages((prev) => [...prev, userMsg, streamingMsg]);
       setInput("");
       resetTranscript();
       setLoading(true);
 
-      if (voiceMode) await trackVoiceMessage();
-
       try {
-        const history = messages.map((msg) => ({ role: msg.role, content: msg.content }));
-        const res = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
+        const data = await sendChatTurn(
+          {
             scenarioId: scenario.id,
+            conversationId,
             userMessage: text,
-            history,
-          locale,
-          voiceMode,
-          adaptiveLevel,
-        }),
-        });
-
-        if (!res.ok) throw new Error("Chat request failed");
-        const data = await res.json();
+            history: conversationSoFar.map((msg) => ({ role: msg.role, content: msg.content })),
+            locale,
+            voiceMode,
+            adaptiveLevel,
+            timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          },
+          (replySoFar) =>
+            setMessages((prev) =>
+              prev.map((msg) => (msg.id === streamingId ? { ...msg, content: replySoFar } : msg))
+            )
+        );
 
         const assistantMsg: ChatMessage = {
-          id: crypto.randomUUID(),
+          id: data.assistantMessageId ?? streamingId,
           role: "assistant",
           content: data.reply,
           translations: data.translations,
           translation: data.translations?.[locale],
           createdAt: new Date().toISOString(),
         };
+        const updatedUserMsg: ChatMessage = {
+          ...userMsg,
+          id: data.userMessageId ?? userMsg.id,
+          feedback: data.feedback,
+        };
+        const finalMessages = [...conversationSoFar, updatedUserMsg, assistantMsg];
 
-        const updatedUserMsg: ChatMessage = { ...userMsg, feedback: data.feedback };
         setLatestFeedback(data.feedback);
-
-        const finalMessages = [...messages, updatedUserMsg, assistantMsg];
-
         setMessages(finalMessages);
-        await persist(finalMessages, data.feedback.overall);
-        await grantXp(Math.round(data.feedback.overall / 10));
+        setDemoMode(data.mock);
 
-        const unlocked = await checkAchievements();
-        if (unlocked.length > 0) setNewAchievements(unlocked);
-      } catch {
+        if (data.persisted) {
+          // The server already stored the turn and applied XP/achievements.
+          if (data.unlocked && data.unlocked.length > 0) setNewAchievements(data.unlocked);
+        } else {
+          persistGuest(finalMessages, data.feedback.overall);
+          if (voiceMode) trackGuestVoiceMessage();
+          // Demo replies are canned, so they don't earn XP or review cards.
+          if (!data.mock) {
+            grantGuestXp(Math.round(data.feedback.overall / 10));
+            addGuestReviewCard(updatedUserMsg.id, scenario.id, text, data.feedback);
+          }
+          const unlocked = await checkAchievements();
+          if (unlocked.length > 0) setNewAchievements(unlocked);
+        }
+      } catch (error) {
+        const code = error instanceof ChatError ? error.code : "internal";
+        const notice =
+          code === "rate_limited"
+            ? m.chat.rateLimited
+            : code === "ai_unavailable"
+              ? m.chat.aiUnavailable
+              : m.chat.errorMessage;
         const errMsg: ChatMessage = {
           id: crypto.randomUUID(),
           role: "assistant",
-          content: "申し訳ございません。エラーが発生しました。もう一度お試しください。",
-          translations: {
-            en: "Sorry, an error occurred. Please try again.",
-            vi: m.chat.errorMessage,
-          },
-          translation: m.chat.errorMessage,
+          content: ERROR_TEXT_JA,
+          translations: { en: notice, vi: notice },
+          translation: notice,
+          failed: true,
           createdAt: new Date().toISOString(),
         };
-        setMessages((prev) => [...prev, errMsg]);
+        // Drop the unanswered turn and give the text back so it can be resent.
+        setMessages((prev) => [
+          ...prev.filter((msg) => msg.id !== userMsg.id && msg.id !== streamingId),
+          errMsg,
+        ]);
+        setInput(text);
       } finally {
         setLoading(false);
       }
     },
-    [input, loading, messages, scenario.id, locale, localized.title, conversationId, existingConversation, adaptiveLevel, m.chat.errorMessage, resetTranscript]
+    [input, loading, messages, scenario.id, locale, conversationId, adaptiveLevel, m.chat.errorMessage, m.chat.rateLimited, m.chat.aiUnavailable, resetTranscript, persistGuest]
   );
 
-  sendMessageRef.current = sendMessage;
+  // Layout effects run before passive effects, so the voice auto-send effect
+  // above always sees the latest sendMessage.
+  useLayoutEffect(() => {
+    sendMessageRef.current = sendMessage;
+  }, [sendMessage]);
 
   const handleVoiceStop = () => {
     pendingVoiceSend.current = true;
@@ -219,7 +264,9 @@ export function ChatInterface({
   const endConversation = async () => {
     const unlocked = await checkAchievements();
     if (unlocked.length > 0) setNewAchievements(unlocked);
-    router.push("/history");
+    const result = summarizeSession(messages);
+    if (result) setSummary(result);
+    else router.push("/history");
   };
 
   const translationLabel = locale === "vi" ? "VI" : "EN";
@@ -228,8 +275,9 @@ export function ChatInterface({
   return (
     <>
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="flex flex-col rounded-xl border border-border bg-surface-elevated">
-          <div className="flex items-center justify-between border-b border-border px-4 py-3">
+        {/* min-w-0: grid items default to min-width:auto and would grow past the screen on mobile. */}
+        <div className="flex min-w-0 flex-col rounded-xl border border-border bg-surface-elevated">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border px-4 py-3">
           <div className="flex items-center gap-3">
             <AiAvatarBadge avatar={aiAvatar} size="md" />
             <div>
@@ -257,8 +305,15 @@ export function ChatInterface({
             </div>
           </div>
 
+          {demoMode && (
+            <p className="border-b border-border bg-surface px-4 py-2 text-xs text-muted">
+              {m.chat.demoMode}
+            </p>
+          )}
+
           <div className="chat-messages-area flex-1 space-y-4 overflow-y-auto p-4" style={{ minHeight: 400, maxHeight: 520 }}>
             {messages.map((msg) => {
+              if (msg.role === "assistant" && !msg.content) return null;
               const translation = getMessageTranslation(msg, locale);
               return (
                 <div
@@ -384,7 +439,7 @@ export function ChatInterface({
           )}
         </div>
 
-        <div className="space-y-4">
+        <div className="min-w-0 space-y-4">
           {latestFeedback ? (
             <FeedbackPanel feedback={latestFeedback} />
           ) : (
@@ -394,6 +449,14 @@ export function ChatInterface({
           )}
         </div>
       </div>
+
+      {summary && (
+        <SessionSummaryDialog
+          summary={summary}
+          onContinue={() => setSummary(null)}
+          onViewHistory={() => router.push("/history")}
+        />
+      )}
 
       <AchievementToast
         achievementIds={newAchievements}
